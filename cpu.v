@@ -100,13 +100,12 @@ module CPU(input reset,       // positive reset signal
 
   // ---------- Control Unit ----------
   ControlUnit ctrl_unit (
-    .part_of_inst(part_of_inst),  // input
+    .opcode(IF_ID_inst[6:0]),  // input
     .mem_read(mem_read),      // output
     .mem_to_reg(mem_to_reg),    // output
     .mem_write(mem_write),     // output
     .alu_src(alu_src),       // output
     .write_enable(write_enable),  // output
-    .pc_to_reg(pc_to_reg),     // output
     .alu_op(alu_op),        // output
     .is_ecall(is_ecall)       // output (ecall inst)
   );
@@ -220,6 +219,6 @@ module CPU(input reset,       // positive reset signal
   end
 
 
-  
+
   
 endmodule
