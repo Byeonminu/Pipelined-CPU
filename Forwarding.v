@@ -1,4 +1,4 @@
-module Forwarding (input [4:0] rs1,
+module ForwardingUnit (input [4:0] rs1,
 			input [4:0] rs2,
 			input [4:0] EX_MEM_rd,
             input [4:0] MEM_WB_rd,
@@ -21,5 +21,15 @@ module Forwarding (input [4:0] rs1,
         assign ForwardB = 2'b01;
     else
         assign ForwardB = 2'b00;
+    
+
+
+endmodule
+
+module MuxControl (input [4:0] rs1,
+			input [4:0] rs2,
+			input [4:0] EX_MEM_rd,
+            
+            );
 
 endmodule

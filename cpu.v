@@ -34,7 +34,7 @@ module CPU(input reset,       // positive reset signal
   reg [31:0] ID_EX_ALU_ctrl_unit_input;
   reg [4:0] ID_EX_rd;
   reg [4:0] ID_EX_rs1;
-  reg [4:0] ID_EX_rs1;
+  reg [4:0] ID_EX_rs2;
   wire IF_ID_write; // signal
 
   /***** EX/MEM pipeline registers *****/
@@ -69,9 +69,6 @@ module CPU(input reset,       // positive reset signal
 
   // RegisterFile
   wire [4:0] rs1;
-  wire [4:0] rs2;
-  wire [4:0] rd;
-  wire [31:0] rd_din;
   wire [31:0] rs1_dout;
   wire [31:0] rs2_dout;
 
@@ -96,13 +93,27 @@ module CPU(input reset,       // positive reset signal
   wire [31:0] alu_in_2;
   wire [31:0] alu_result;
 
+  wire [31:0] alu_in_2_temp;
+  
   //Data mem
   wire [31:0] dout_mem;
   
+  wire [31:0] mem_to_reg_temp;
+
   //forwarding | hazard
   wire [1:0] ForwardA;
   wire [1:0] ForwardB;
   wire is_stall;
+
+  mux_2_to_1 reg_imm(ID_EX_rs2_data, imm_gen_out, alu_src, alu_in_2_temp);
+  mux_2_to_1 mem_reg(MEM_WB_mem_to_reg_src_1, MEM_WB_mem_to_reg_src_2, mem_to_reg, mem_to_reg_temp);
+  mux_4_to_1 alu_input1(ID_EX_rs1_data, mem_to_reg_temp, EX_MEM_alu_out, ForwardA, alu_in_1);
+  mux_4_to_1 alu_input2(alu_in_2_temp, mem_to_reg_temp, EX_MEM_alu_out, ForwardB, alu_in_2);
+
+  mux_2_to_1 halt (IF_ID_inst[19:15], 5'b10001, is_ecall, rs1);
+  
+  assign is_halted = (is_ecall && rs1_dout == 10);
+  
 
   // ---------- Update program counter ----------
   // PC must be updated on the rising edge (positive edge) of the clock.
@@ -137,13 +148,13 @@ module CPU(input reset,       // positive reset signal
   RegisterFile reg_file (
     .reset (reset),        // input
     .clk (clk),          // input
-    .rs1 (rs1),          // input
-    .rs2 (rs2),          // input
-    .rd (rd),           // input
-    .rd_din (rd_din),       // input
+    .rs1 (IF_ID_inst[19:15]),          // input
+    .rs2 (IF_ID_inst[24:20]),          // input
+    .rd (IF_ID_inst[11:7]),           // input
+    .rd_din (mem_to_reg_temp),       // input
     .write_enable (write_enable),    // input
     .rs1_dout (rs1_dout),     // output
-    .rs2_dout (rs2_dout),     // output
+    .rs2_dout (rs2_dout)     // output
   );
 
 
@@ -183,13 +194,23 @@ module CPU(input reset,       // positive reset signal
       ID_EX_rs2 <= 5'b0;
     end
     else begin
-      
+      if(is_stall) begin
+        ID_EX_alu_op <= 2'b0;
+        ID_EX_alu_src <= 0; 
+        ID_EX_mem_write <= 0;
+        ID_EX_mem_read <= 0; 
+        ID_EX_mem_to_reg <= 0;
+        ID_EX_reg_write <= 0;
+      end
+      else begin
       ID_EX_alu_op <= alu_op; 
       ID_EX_alu_src <= alu_src; 
       ID_EX_mem_write <= mem_write;
       ID_EX_mem_read <= mem_read; 
       ID_EX_mem_to_reg <= mem_to_reg;
       ID_EX_reg_write <= write_enable;
+      end
+
       ID_EX_rs1_data <= rs1_dout;
       ID_EX_rs2_data <= rs2_dout;
       ID_EX_imm <= imm_gen_out;
@@ -212,7 +233,7 @@ module CPU(input reset,       // positive reset signal
     .alu_control(alu_control),      // input
     .alu_in_1(alu_in_1),    // input  
     .alu_in_2(alu_in_2),    // input
-    .alu_result(alu_result),  // output
+    .alu_result(alu_result)  // output
   );
 
   // Update EX/MEM pipeline registers here
@@ -268,7 +289,7 @@ module CPU(input reset,       // positive reset signal
     end
   end
 
-  Forwarding forward(
+  ForwardingUnit forward(
     .rs1(ID_EX_rs1), //input
     .rs2(ID_EX_rs2), //input
     .EX_MEM_rd(EX_MEM_rd), //input
@@ -287,6 +308,6 @@ module CPU(input reset,       // positive reset signal
    .IF_ID_write(IF_ID_write), //output
    .is_stall(is_stall) //output
  );
-
+ 
   
 endmodule
