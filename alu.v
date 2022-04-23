@@ -4,13 +4,9 @@
 module ALU (input [31:0] alu_in_1,
 			input [31:0] alu_in_2,
 			input [3:0] alu_control,
-			output reg signed [31:0] alu_result,
-			output [2:0] alu_bcond);
+			output reg signed [31:0] alu_result);
 
-	assign alu_bcond[0] = (alu_result == 0) ? 1 : 0 ; //beq bne bge
-	assign alu_bcond[1] = (alu_result < 0) ? 1 : 0; // blt
-	assign alu_bcond[2] = (alu_result > 0) ? 1 : 0; // bge
-
+	
 // always @(*) begin
 // 	$display("alu input first %x , second %x", alu_in_1, alu_in_2);
 // end
