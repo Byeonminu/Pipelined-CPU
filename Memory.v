@@ -42,8 +42,10 @@ module DataMemory #(parameter MEM_DEPTH = 16384) (input reset,
   // Synchronously write data to the memory
   assign dout = (mem_read) ? mem[dmem_addr] : 32'b0;
   always @(posedge clk) begin
-    if (mem_write)
+    if (mem_write) begin
       mem[dmem_addr] <= din;
+      $display("%x의 메모리에 <= %x", addr, din);
+  end
   end
 
   // Initialize data memory (do not touch)

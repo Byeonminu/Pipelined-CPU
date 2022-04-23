@@ -18,7 +18,7 @@ module RegisterFile(input	reset,
   always @(posedge clk) begin
     if (write_enable & (rd != 0)) begin
       rf[rd] <= rd_din;
-      $display("%d의 메모리에 <= %x", rd, rd_din);
+      $display("%d의 레지스터에 <= %x", rd, rd_din);
     end
   end
 

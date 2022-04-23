@@ -79,6 +79,8 @@ module CPU(input reset,       // positive reset signal
 
   // RegisterFile
   wire [4:0] rs1;
+  
+  
   wire [31:0] rs1_dout;
   wire [31:0] rs2_dout;
 
@@ -121,20 +123,27 @@ module CPU(input reset,       // positive reset signal
 
   mux_2_to_1 rs1_forward(rs1_dout, mem_to_reg_temp, WB_rs1, rs1_temp);
   mux_2_to_1 rs2_forward(rs2_dout, mem_to_reg_temp, WB_rs2, rs2_temp);
-  mux_2_to_1 reg_imm(ID_EX_rs2_data, ID_EX_imm, ID_EX_alu_src, alu_in_2_temp);
+  
   mux_2_to_1 mem_reg(MEM_WB_mem_to_reg_src_1, MEM_WB_mem_to_reg_src_2, MEM_WB_mem_to_reg, mem_to_reg_temp);
   mux_4_to_1 alu_input1(ID_EX_rs1_data, mem_to_reg_temp, EX_MEM_alu_out, ForwardA, alu_in_1);
-  mux_4_to_1 alu_input2(alu_in_2_temp, mem_to_reg_temp, EX_MEM_alu_out, ForwardB, alu_in_2);
+  mux_4_to_1 alu_input2(ID_EX_rs2_data, mem_to_reg_temp, EX_MEM_alu_out, ForwardB, alu_in_2_temp);
+  mux_2_to_1 reg_imm(alu_in_2_temp, ID_EX_imm, ID_EX_alu_src, alu_in_2);
 
-  assign rs1 = is_ecall ? 5'b10001 : IF_ID_inst[19:15];
+  assign rs1 = (is_ecall) ? 17: IF_ID_inst[19:15];
 
-  assign is_halted = (is_ecall && rs1_dout == 10);
+
+  assign is_halted = (is_ecall && (rs1_dout == 10)) ? 1 : 0;
   
   assign next_pc = current_pc + 4;
 
+  always @(*) begin
+
+    $display("is_ecall is %b", is_ecall);
+  end
+
   integer i;
   always @(*) begin
-    if(current_pc >= 8'h34) begin
+    if(current_pc >= 8'ha8) begin
       for (i = 0; i < 32; i = i + 1)
         $display("%d %x\n", i, reg_file.rf[i]);
         $finish();
@@ -163,7 +172,7 @@ module CPU(input reset,       // positive reset signal
    always @(*) begin
      $display("MEM_WB_mem_to_reg_src_1 %x", MEM_WB_mem_to_reg_src_1);
      $display("MEM_WB_mem_to_reg_src_2 %x", MEM_WB_mem_to_reg_src_2);
-    $display("MEM_WB_mem_to_reg %x", MEM_WB_mem_to_reg);
+     $display("MEM_WB_mem_to_reg %x", MEM_WB_mem_to_reg);
    end
   // ---------- Update program counter ----------
   // PC must be updated on the rising edge (positive edge) of the clock.
@@ -198,7 +207,7 @@ module CPU(input reset,       // positive reset signal
   RegisterFile reg_file (
     .reset (reset),        // input
     .clk (clk),          // input
-    .rs1 (IF_ID_inst[19:15]),          // input
+    .rs1 (rs1),          // input
     .rs2 (IF_ID_inst[24:20]),          // input
     .rd (MEM_WB_rd),           // input
     .rd_din (mem_to_reg_temp),       // input
@@ -251,6 +260,13 @@ module CPU(input reset,       // positive reset signal
         ID_EX_mem_read <= 0; 
         ID_EX_mem_to_reg <= 0;
         ID_EX_reg_write <= 0;
+        ID_EX_rs1 <= 5'b0;
+        ID_EX_rs2 <= 5'b0;
+        ID_EX_rd <=  5'b0;
+        ID_EX_rs1_data <= 32'b0;
+        ID_EX_rs2_data <= 32'b0;
+        ID_EX_imm <= 32'b0;
+        ID_EX_ALU_ctrl_unit_input <= 32'b0;
       end
       else begin
       ID_EX_alu_op <= alu_op; 
@@ -259,14 +275,31 @@ module CPU(input reset,       // positive reset signal
       ID_EX_mem_read <= mem_read; 
       ID_EX_mem_to_reg <= mem_to_reg;
       ID_EX_reg_write <= write_enable;
-      end
       ID_EX_rs1_data <= rs1_temp;
       ID_EX_rs2_data <= rs2_temp;
       ID_EX_imm <= imm_gen_out;
       ID_EX_ALU_ctrl_unit_input <= IF_ID_inst;
-      ID_EX_rd <= IF_ID_inst[11:7];
-      ID_EX_rs1 <= IF_ID_inst[19:15];
-      ID_EX_rs2 <= IF_ID_inst[24:20];
+      if(IF_ID_inst[6:0] == `ADD) begin
+        ID_EX_rs1 <= IF_ID_inst[19:15];
+        ID_EX_rs2 <= IF_ID_inst[24:20];
+        ID_EX_rd <=  IF_ID_inst[11:7];
+      end
+      else if(IF_ID_inst[6:0] == `ADDI) begin
+        ID_EX_rs1 <= IF_ID_inst[19:15];
+        ID_EX_rs2 <= 5'b0;
+        ID_EX_rd <=  IF_ID_inst[11:7];
+      end
+      else if(IF_ID_inst[6:0] == `LW) begin
+        ID_EX_rs1 <= IF_ID_inst[19:15];
+        ID_EX_rs2 <= 5'b0;
+        ID_EX_rd <=  IF_ID_inst[11:7];
+      end
+      else if(IF_ID_inst[6:0] == `SW) begin
+        ID_EX_rs1 <= IF_ID_inst[19:15];
+        ID_EX_rs2 <= IF_ID_inst[24:20];
+        ID_EX_rd <=  5'b0;
+      end
+      end
       
       // $display("ID/EX");
       // $display("ID_EX_alu_op");
@@ -307,7 +340,7 @@ module CPU(input reset,       // positive reset signal
       EX_MEM_mem_to_reg <= ID_EX_mem_to_reg;   
       EX_MEM_reg_write <= ID_EX_reg_write;     
       EX_MEM_alu_out <= alu_result; 
-      EX_MEM_dmem_data <= ID_EX_rs2_data; 
+      EX_MEM_dmem_data <= alu_in_2_temp; 
       EX_MEM_rd <= ID_EX_rd;
     end
   end

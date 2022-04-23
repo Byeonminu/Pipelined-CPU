@@ -9,7 +9,7 @@ module ForwardingUnit (input [4:0] rs1,
             );
 
 always @(*) begin
-    $display("rs1 : %d , rs2 : %d, EX_MEM_rd: %d ", rs1, rs2, EX_MEM_rd);        
+    $display("rs1 : %d , rs2 : %d, EX_MEM_rd: %d MEM_WB_rd : %d", rs1, rs2, EX_MEM_rd, MEM_WB_rd);        
 
 end
 always @(*) begin
