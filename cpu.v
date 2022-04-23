@@ -7,6 +7,16 @@
 // (e.g., port declarations, remove modules, define new modules, ...)
 // 3. You might need to describe combinational logics to drive them into the module (e.g., mux, and, or, ...)
 // 4. `include files if required
+`include "mux.v"
+`include "pc.v"
+`include "Memory.v"
+`include "control_unit.v"
+`include "ImmediateGenerator.v"
+`include "opcodes.v"
+`include "alu.v"
+`include "RegisterFile.v"
+`include "Forwarding.v"
+`include "Hazard_unit.v"
 
 module CPU(input reset,       // positive reset signal
            input clk,         // clock signal
@@ -104,17 +114,57 @@ module CPU(input reset,       // positive reset signal
   wire [1:0] ForwardA;
   wire [1:0] ForwardB;
   wire is_stall;
+  wire WB_rs1;
+  wire WB_rs2;
+  wire [31:0] rs1_temp;
+  wire [31:0] rs2_temp;
 
-  mux_2_to_1 reg_imm(ID_EX_rs2_data, imm_gen_out, alu_src, alu_in_2_temp);
-  mux_2_to_1 mem_reg(MEM_WB_mem_to_reg_src_1, MEM_WB_mem_to_reg_src_2, mem_to_reg, mem_to_reg_temp);
+  mux_2_to_1 rs1_forward(rs1_dout, mem_to_reg_temp, WB_rs1, rs1_temp);
+  mux_2_to_1 rs2_forward(rs2_dout, mem_to_reg_temp, WB_rs2, rs2_temp);
+  mux_2_to_1 reg_imm(ID_EX_rs2_data, ID_EX_imm, ID_EX_alu_src, alu_in_2_temp);
+  mux_2_to_1 mem_reg(MEM_WB_mem_to_reg_src_1, MEM_WB_mem_to_reg_src_2, MEM_WB_mem_to_reg, mem_to_reg_temp);
   mux_4_to_1 alu_input1(ID_EX_rs1_data, mem_to_reg_temp, EX_MEM_alu_out, ForwardA, alu_in_1);
   mux_4_to_1 alu_input2(alu_in_2_temp, mem_to_reg_temp, EX_MEM_alu_out, ForwardB, alu_in_2);
 
-  mux_2_to_1 halt (IF_ID_inst[19:15], 5'b10001, is_ecall, rs1);
-  
+  assign rs1 = is_ecall ? 5'b10001 : IF_ID_inst[19:15];
+
   assign is_halted = (is_ecall && rs1_dout == 10);
   
+  assign next_pc = current_pc + 4;
 
+  integer i;
+  always @(*) begin
+    if(current_pc >= 8'h34) begin
+      for (i = 0; i < 32; i = i + 1)
+        $display("%d %x\n", i, reg_file.rf[i]);
+        $finish();
+    end
+  end
+
+
+  always @(*) begin
+    $display("------ ------- ------ ------ ----- current_pc %x\n", current_pc);
+    // $display("------ ------- ------ ------ ----- IF_ID_inst %x\n", IF_ID_inst);
+    
+    
+  end
+  // always @(*) begin
+
+  //   $display("alu_in_1 %x\n", alu_in_1);
+  //   $display("alu_in_2 %x\n", alu_in_2);
+   
+  // end
+   always @(*) begin
+
+   $display("EX_MEM_alu_out %x\n", EX_MEM_alu_out);
+  end
+   
+
+   always @(*) begin
+     $display("MEM_WB_mem_to_reg_src_1 %x", MEM_WB_mem_to_reg_src_1);
+     $display("MEM_WB_mem_to_reg_src_2 %x", MEM_WB_mem_to_reg_src_2);
+    $display("MEM_WB_mem_to_reg %x", MEM_WB_mem_to_reg);
+   end
   // ---------- Update program counter ----------
   // PC must be updated on the rising edge (positive edge) of the clock.
   PC pc(
@@ -150,9 +200,9 @@ module CPU(input reset,       // positive reset signal
     .clk (clk),          // input
     .rs1 (IF_ID_inst[19:15]),          // input
     .rs2 (IF_ID_inst[24:20]),          // input
-    .rd (IF_ID_inst[11:7]),           // input
+    .rd (MEM_WB_rd),           // input
     .rd_din (mem_to_reg_temp),       // input
-    .write_enable (write_enable),    // input
+    .write_enable (MEM_WB_reg_write),    // input
     .rs1_dout (rs1_dout),     // output
     .rs2_dout (rs2_dout)     // output
   );
@@ -210,21 +260,23 @@ module CPU(input reset,       // positive reset signal
       ID_EX_mem_to_reg <= mem_to_reg;
       ID_EX_reg_write <= write_enable;
       end
-
-      ID_EX_rs1_data <= rs1_dout;
-      ID_EX_rs2_data <= rs2_dout;
+      ID_EX_rs1_data <= rs1_temp;
+      ID_EX_rs2_data <= rs2_temp;
       ID_EX_imm <= imm_gen_out;
       ID_EX_ALU_ctrl_unit_input <= IF_ID_inst;
       ID_EX_rd <= IF_ID_inst[11:7];
       ID_EX_rs1 <= IF_ID_inst[19:15];
       ID_EX_rs2 <= IF_ID_inst[24:20];
       
+      // $display("ID/EX");
+      // $display("ID_EX_alu_op");
     end
   end
 
   // ---------- ALU Control Unit ----------
   ALUControlUnit alu_ctrl_unit (
     .part_of_inst(ID_EX_ALU_ctrl_unit_input),  // input
+    .alu_op(ID_EX_alu_op),
     .alu_control(alu_control)         // output
   );
 
@@ -284,7 +336,7 @@ module CPU(input reset,       // positive reset signal
       MEM_WB_mem_to_reg <= EX_MEM_mem_to_reg;
       MEM_WB_reg_write <= EX_MEM_reg_write;
       MEM_WB_mem_to_reg_src_1 <= dout_mem;
-      ME_WB_mem_to_reg_src_2 <= EX_MEM_alu_out;
+      MEM_WB_mem_to_reg_src_2 <= EX_MEM_alu_out;
       MEM_WB_rd <= EX_MEM_rd;
     end
   end
@@ -297,7 +349,7 @@ module CPU(input reset,       // positive reset signal
     .EX_MEM_reg_write(EX_MEM_reg_write), //input
     .MEM_WB_reg_write(MEM_WB_reg_write), //input
     .ForwardA(ForwardA), //output
-    .ForwardB(ForwardB), //output
+    .ForwardB(ForwardB) //output
   );
 
   HazardDetectionUnit hazard(
@@ -309,5 +361,12 @@ module CPU(input reset,       // positive reset signal
    .is_stall(is_stall) //output
  );
  
+
+ MuxControl mux_control(
+  .IF_ID_inst(IF_ID_inst),
+  .MEM_WB_rd(MEM_WB_rd),
+  .WB_rs1(WB_rs1),
+  .WB_rs2(WB_rs2)
+ );
   
 endmodule

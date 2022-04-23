@@ -1,7 +1,8 @@
 `include "opcodes.v"
 
 module ControlUnit (input [6:0] opcode,
-                    output alu_src, mem_to_reg, write_enable, mem_read, mem_write, is_ecall, alu_op);
+                    output alu_src, mem_to_reg, write_enable, mem_read, mem_write, is_ecall,
+                    output reg [1:0] alu_op);
 
 
 reg [5:0] control;
@@ -9,16 +10,17 @@ reg [5:0] control;
 assign {alu_src, mem_to_reg, write_enable, mem_read, mem_write, is_ecall} = control;
 
 always @(*) begin
-
 case (opcode)
-    7'b0110011 : control = 6'b001000; // R-type
-    7'b0000011 : control = 6'b111100; // lw-type
+    7'b0110011 : control = 6'b011000; // R-type
+    7'b0000011 : control = 6'b101100; // lw-type
     7'b0100011 : control = 6'b100010; // s-type
-    7'b0010011 : control = 6'b101000; // I-type
+    7'b0010011 : control = 6'b111000; // I-type
     7'b1110011 : control = 6'b000001; // ecall
     default : control = 6'b000000;
 endcase
+end
 
+always @(*) begin
 case (opcode) 
     7'b0110011 : alu_op = 2'b10; // R-type
     7'b0000011 : alu_op = 2'b00; // lw-type
@@ -26,7 +28,6 @@ case (opcode)
     7'b0010011 : alu_op = 2'b11; // I-type
     default : alu_op = 2'b00;
 endcase
-
 end
 
 endmodule

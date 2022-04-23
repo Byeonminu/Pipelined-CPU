@@ -11,7 +11,7 @@ endmodule
 
 module mux_4_to_1(
                 input [31:0] first,
-                input [2:0] second,
+                input [31:0] second,
                 input [31:0] third,
                 input [1:0] signal,
                 output reg [31:0] result);
