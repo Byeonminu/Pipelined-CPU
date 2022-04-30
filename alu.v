@@ -7,9 +7,9 @@ module ALU (input [31:0] alu_in_1,
 			output reg signed [31:0] alu_result);
 
 	
- always @(*) begin
- 	$display("alu input first %x , second %x", alu_in_1, alu_in_2);
- end
+//  always @(*) begin
+//  	$display("alu input first %x , second %x", alu_in_1, alu_in_2);
+//  end
 
 always@(*) begin
 	
@@ -24,7 +24,7 @@ always@(*) begin
 	4'b1000: alu_result = alu_in_1 >> alu_in_2; // srl
 	default: alu_result = {32{1'bx}};	
 	endcase
-	 $display("alu_result is %x", alu_result );
+	//  $display("alu_result is %x", alu_result );
 	
 /* `define FUNCT3_ADD      3'b000
 `define FUNCT3_SUB      3'b000
@@ -65,9 +65,9 @@ assign inst30 = part_of_inst[30];
 // endcase
 // end
 
-always @(*) begin
- $display("alu control unit alu_op: %b", alu_op);
-end
+// always @(*) begin
+//  $display("alu control unit alu_op: %b", alu_op);
+// end
 
 always @(*) begin
 	case(alu_op)

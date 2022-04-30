@@ -18,7 +18,7 @@ module InstMemory #(parameter MEM_DEPTH = 1024) (input reset,
       for (i = 0; i < MEM_DEPTH; i = i + 1)
           mem[i] = 32'b0;
       // Provide path of the file including instructions with binary format
-      $readmemh("tb/non-controlflow_mem.txt", mem);
+      $readmemh("tb/non_control_flow_mem.txt", mem);
     end
   end
 
@@ -42,10 +42,8 @@ module DataMemory #(parameter MEM_DEPTH = 16384) (input reset,
   // Synchronously write data to the memory
   assign dout = (mem_read) ? mem[dmem_addr] : 32'b0;
   always @(posedge clk) begin
-    if (mem_write) begin
+    if (mem_write)
       mem[dmem_addr] <= din;
-      $display("%x의 메모리에 <= %x", addr, din);
-  end
   end
 
   // Initialize data memory (do not touch)

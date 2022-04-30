@@ -8,8 +8,8 @@ main:
         addi    a5,zero,14
         sw      a5,-24(s0)
         lw      a4,-24(s0)
-        lw      a5,-20(s0)
-        add     a5,a4,a5
+        lw      a5,-20(s0) // 24
+        add     a5,a4,a5  // 28
         addi    a0,zero,0
         not     a0,a0
         or      a0,zero,a0

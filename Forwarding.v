@@ -8,10 +8,10 @@ module ForwardingUnit (input [4:0] rs1,
             output reg [1:0] ForwardB
             );
 
-always @(*) begin
-    $display("rs1 : %d , rs2 : %d, EX_MEM_rd: %d MEM_WB_rd : %d", rs1, rs2, EX_MEM_rd, MEM_WB_rd);        
+// always @(*) begin
+//     $display("rs1 : %d , rs2 : %d, EX_MEM_rd: %d MEM_WB_rd : %d", rs1, rs2, EX_MEM_rd, MEM_WB_rd);        
+// end
 
-end
 always @(*) begin
     if ((rs1 != 5'b0) && (rs1 == EX_MEM_rd))
         ForwardA = 2'b10;
@@ -26,13 +26,17 @@ always @(*) begin
         ForwardB = 2'b01;
     else
         ForwardB = 2'b00;
+
+    // if (rs1 == 17 && EX_MEM_rd == 17) begin // 1 stall 
+    //     ForwardA = 2'b10;
+    // end
 end
 
 
 
-always @(*) begin
-    $display("ForwardA : %b , ForwardB : %b", ForwardA, ForwardB);
-end
+// always @(*) begin
+//     $display("ForwardA : %b , ForwardB : %b", ForwardA, ForwardB);
+// end
 
 endmodule
 
